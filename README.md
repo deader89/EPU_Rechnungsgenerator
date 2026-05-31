@@ -75,8 +75,19 @@ pyinstaller --name "RechnungsAPP" --windowed --icon=icon.png main.py
 
 ### 🤖 Android (Buildozer)
 Die Android-Builds erfordern Buildozer auf einem Linux-System (oder WSL).
-Die App verwendet native Android-Klassen (MediaStore, Storage Access Framework). Stelle sicher, dass in deiner `buildozer.spec` folgende Berechtigungen gesetzt sind:
-* `android.permissions = READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, INTERNET`
+Die App verwendet native Android-Klassen (MediaStore, Storage Access Framework). Im Repository liegt bereits eine fertig konfigurierte `buildozer.spec`.
+
+Besonders wichtige Einstellungen in der `buildozer.spec` für dieses Projekt:
+```ini
+# Benötigte Berechtigungen für Dateiexporte
+android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
+
+# Native AndroidX DocumentFile API (für SAF)
+android.gradle_dependencies = androidx.documentfile:documentfile:1.0.1
+
+# Workaround für fpdf2/fonttools (verhindert Build-Fehler wegen fehlendem Cython)
+p4a.env_vars = FONTTOOLS_NO_CYTHON=1,PIP_NO_BINARY=fonttools
+```
 
 ```bash
 buildozer android debug deploy run
@@ -87,8 +98,27 @@ buildozer android debug deploy run
 ## 📂 Wichtiger Hinweis zur Ordnerstruktur (`vendor` / `libs`)
 
 Um Probleme mit PyInstaller und mobilen Deployments zu vermeiden, nutzt dieses Projekt teilweise das *Vendoring* von Modulen:
-* `vendor/`: Dieser Ordner kann genutzt werden, um reine Python-Pakete (wie fpdf2) direkt im Projekt abzulegen, anstatt sie systemweit zu installieren.
+* `vendor/`: Dieser Ordner wird genutzt, um reine Python-Pakete (wie `fpdf2`, `fonttools` und `defusedxml`) direkt im Projekt abzulegen, anstatt sie systemweit zu installieren.
 * `libs/`: Zusätzliche Abhängigkeiten, die auf Desktop-Systemen in den `sys.path` geladen werden (nicht auf Android).
+
+### Den `vendor`-Ordner erstellen
+Falls der Ordner noch nicht existiert, wird er einfach im Hauptverzeichnis des Projekts erstellt:
+```bash
+mkdir vendor
+```
+
+Damit Python (und Kivy auf Android) die Pakete in diesem Ordner findet, wird der Pfad in der `main.py` ganz oben beim Start der App automatisch zum Python-Suchpfad (`sys.path`) hinzugefügt:
+```python
+# Auszug aus der main.py
+vendor_path = os.path.join(base_path, 'vendor')
+if vendor_path not in sys.path: sys.path.insert(0, vendor_path)
+```
+
+### Wie die aktuellen Inhalte eingefügt wurden
+Im aktuellen Projekt werden die Bibliotheken zur PDF-Erstellung (`fpdf2` und dessen Abhängigkeiten fonttools sowie defusedxml) gevendort. Mit dem Pip-Parameter `--target` zwingt man `pip`, die Pakete nicht systemweit, sondern genau in den angegebenen Ordner herunterzuladen und zu entpacken. Der Befehl lautet:
+```bash
+pip install --target vendor fpdf2 fonttools defusedxml
+```
 
 ---
 

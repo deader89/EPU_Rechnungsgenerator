@@ -1293,7 +1293,7 @@ class RechnungScreen(Screen):
                     with open(pdf_pfad, "wb") as f:
                         f.write(pdf_daten)
                 except Exception as e:
-                Logger.error(f"Rechnung: Fehler beim Speichern im internen Rechnungsordner: {e}")
+                    Logger.error(f"Rechnung: Fehler beim Speichern im internen Rechnungsordner: {e}")
 
             if "rechnungen_db" not in app.data:
                 app.data["rechnungen_db"] = {}

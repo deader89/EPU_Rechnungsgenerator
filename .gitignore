@@ -8,6 +8,9 @@ bin/
 build/
 dist/
 *.spec
+!buildozer.spec
+vendor/
+libs/
 
 # Lokale App-Daten & Datenbanken
 rechnung_daten.enc
