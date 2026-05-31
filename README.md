@@ -41,7 +41,7 @@ Dieses Projekt nutzt modernste Python-Bibliotheken:
 
 ### 1. Repository klonen
 ```bash
-git clone https://github.com/DEIN_USERNAME/EPU_Rechnungsgenerator.git
+git clone https://github.com/deader89/EPU_Rechnungsgenerator.git
 cd EPU_Rechnungsgenerator
 ```
 
@@ -56,7 +56,7 @@ source venv/bin/activate  # Auf Windows: venv\Scripts\activate
 # Pakete installieren
 pip install -r requirements.txt
 ```
-*(Hinweis: Falls noch nicht vorhanden, erstelle eine `requirements.txt` mit `kivy`, `fpdf2`, `pycryptodome`, `qrcode`, `Pillow`)*
+*(Hinweis: Falls noch nicht vorhanden,erstelle eine requirements.txt mit kivy, fpdf2, pycryptodome, qrcode, Pillow, pyinstaller)*
 
 ### 3. App starten
 ```bash
@@ -75,6 +75,13 @@ pyinstaller --name "RechnungsAPP" --windowed --icon=icon.png main.py
 
 ### 🤖 Android (Buildozer)
 Die Android-Builds erfordern Buildozer auf einem Linux-System (oder WSL).
+
+**Installation von Buildozer:**
+```bash
+pip install --user buildozer
+```
+*(Hinweis: Buildozer benötigt unter Linux/WSL zusätzliche System-Pakete wie OpenJDK, zip, unzip etc. Siehe dazu die [offizielle Dokumentation](https://buildozer.readthedocs.io/en/latest/installation.html)).*
+
 Die App verwendet native Android-Klassen (MediaStore, Storage Access Framework). Im Repository liegt bereits eine fertig konfigurierte `buildozer.spec`.
 
 Besonders wichtige Einstellungen in der `buildozer.spec` für dieses Projekt:
