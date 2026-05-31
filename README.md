@@ -70,7 +70,7 @@ python main.py
 ### 💻 Windows (PyInstaller)
 Die Architektur ist bereits für PyInstaller vorbereitet. Kivy-Hooks und Vendor-Pfade werden in der `main.py` dynamisch erkannt.
 ```bash
-pyinstaller --name "RechnungsAPP" --windowed --icon=icon.png main.py
+pyinstaller --noconfirm --onefile --windowed --name "EPU_Rechnungsgenerator" --add-data "layout.kv;." --add-data "icon.png;." main.py
 ```
 
 ### 🤖 Android (Buildozer)
