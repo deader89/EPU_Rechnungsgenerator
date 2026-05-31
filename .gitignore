@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Kivy / Buildozer / PyInstaller
+.buildozer/
+bin/
+build/
+dist/
+*.spec
+
+# Lokale App-Daten & Datenbanken
+rechnung_daten.enc
+rechnung_daten.salt
+os_config.json
+restored_logo*
