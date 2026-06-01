@@ -17,3 +17,10 @@ rechnung_daten.enc
 rechnung_daten.salt
 os_config.json
 restored_logo*
+venv/
+.venv/
+env/
+*.pdf
+.env
+.vscode/
+.idea/

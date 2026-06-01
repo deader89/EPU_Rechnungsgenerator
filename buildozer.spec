@@ -1,7 +1,7 @@
 [app]
 title = EPURechnungen
 package.name = epurechnungen
-package.domain = at.dave
+package.domain = your packagename
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json,enc,salt,ttf,txt,csv,xml,pkl
 source.exclude_dirs = libs, bin, build
