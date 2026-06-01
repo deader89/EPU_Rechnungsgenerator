@@ -11,8 +11,10 @@ def create_backup(data_path, salt_path, full_path, zip_pwd, user_data_dir, logo_
     mem_zip_buffer = io.BytesIO()
     with zipfile.ZipFile(mem_zip_buffer, 'w', zipfile.ZIP_DEFLATED) as mem_zip:
         mem_zip.write(data_path, "rechnung_daten.enc")
-        mem_zip.write(salt_path, "rechnung_daten.salt")
         
+        if os.path.exists(salt_path):
+            mem_zip.write(salt_path, "rechnung_daten.salt")
+            
         if app_data and "rechnungen_db" in app_data:
             from platform_io import read_file_native
             for rn, r_daten in app_data["rechnungen_db"].items():
@@ -84,19 +86,21 @@ def restore_backup(quell_zip, pwd, user_data_dir, custom_pdf_dir=None, target_os
         paket = json.loads(dec.decode('utf-8'))
         enc_bytes = bytes.fromhex(paket["enc"])
         salt_bytes = bytes.fromhex(paket["salt"])
-        with open(os.path.join(user_data_dir, "rechnung_daten.enc"), "wb") as f: f.write(enc_bytes)
-        with open(os.path.join(user_data_dir, "rechnung_daten.salt"), "wb") as f: f.write(salt_bytes)
+        with open(os.path.join(user_data_dir, "rechnung_daten.enc"), "wb") as f: f.write(salt_bytes + enc_bytes)
     except Exception:
         mem_zip_buffer = io.BytesIO(dec)
+        enc_data = None
+        salt_data = None
         with zipfile.ZipFile(mem_zip_buffer, 'r') as mem_zip:
             for file_info in mem_zip.infolist():
                 # Verhindert Directory Traversal Angriffe (../) und leere Ordner
                 if ".." in file_info.filename or file_info.filename.startswith("/") or file_info.filename.endswith('/'):
                     continue
                     
-                if file_info.filename in ["rechnung_daten.enc", "rechnung_daten.salt"]:
-                    with open(os.path.join(user_data_dir, file_info.filename), "wb") as f:
-                        f.write(mem_zip.read(file_info.filename))
+                if file_info.filename == "rechnung_daten.enc":
+                    enc_data = mem_zip.read(file_info.filename)
+                elif file_info.filename == "rechnung_daten.salt":
+                    salt_data = mem_zip.read(file_info.filename)
                 elif file_info.filename.startswith("Rechnungen/"):
                     new_uri = None
                     if custom_pdf_dir and custom_pdf_dir != "STANDARD":
@@ -130,6 +134,12 @@ def restore_backup(quell_zip, pwd, user_data_dir, custom_pdf_dir=None, target_os
                             except: pass
                     with open(target_path, "wb") as f: 
                         f.write(mem_zip.read(file_info.filename))
+                        
+        if enc_data:
+            if salt_data:
+                enc_data = salt_data + enc_data
+            with open(os.path.join(user_data_dir, "rechnung_daten.enc"), "wb") as f:
+                f.write(enc_data)
         mem_zip_buffer.close()
         
     return restored_pdfs
