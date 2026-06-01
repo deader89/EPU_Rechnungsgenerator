@@ -10,14 +10,14 @@ requirements = python3,kivy==2.3.1,kivymd==1.2.0,pycryptodome,qrcode,pillow,pyjn
 icon.filename = icon.png
 orientation = all
 android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
-android.api = 34
+android.api = 35
 android.minapi = 21
-android.ndk = 25b
+android.ndk = 27c
 android.archs = arm64-v8a
 android.allow_backup = True
 android.copy_libs = 0
 android.gradle_dependencies = androidx.documentfile:documentfile:1.0.1
 [buildozer]
 log_level = 2
-p4a.branch = master
+p4a.branch = develop
 p4a.env_vars = FONTTOOLS_NO_CYTHON=1,PIP_NO_BINARY=fonttools
