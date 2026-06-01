@@ -156,19 +156,25 @@ def save_pdf_native(pdf_daten, default_filename, target_os, custom_dir=None):
     elif target_os == "mobile":
         try:
             from jnius import autoclass
-            Environment = autoclass('android.os.Environment')
-            downloads_dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            context = PythonActivity.mActivity
+            cache_dir = context.getCacheDir().getAbsolutePath()
             
-            target_path = os.path.join(downloads_dir, default_filename)
+            target_path = os.path.join(cache_dir, default_filename)
             base, ext = os.path.splitext(default_filename)
             counter = 1
             while os.path.exists(target_path):
-                target_path = os.path.join(downloads_dir, f"{base}_{counter}{ext}")
+                target_path = os.path.join(cache_dir, f"{base}_{counter}{ext}")
                 counter += 1
                 
             with open(target_path, "wb") as f:
                 f.write(pdf_daten)
-            return target_path
+                
+            uri = _get_shareable_uri(context, target_path, "application/pdf")
+            try: os.remove(target_path)
+            except Exception: pass
+            if uri: return uri.toString()
+            return "KIVY_FALLBACK"
         except Exception as e:
             Logger.error(f"PlatformIO: Android Speichern Fehler: {e}")
             return "KIVY_FALLBACK"
@@ -268,19 +274,25 @@ def save_zip_native(zip_daten, default_filename, target_os, custom_dir=None):
     elif target_os == "mobile":
         try:
             from jnius import autoclass
-            Environment = autoclass('android.os.Environment')
-            downloads_dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            context = PythonActivity.mActivity
+            cache_dir = context.getCacheDir().getAbsolutePath()
             
-            target_path = os.path.join(downloads_dir, default_filename)
+            target_path = os.path.join(cache_dir, default_filename)
             base, ext = os.path.splitext(default_filename)
             counter = 1
             while os.path.exists(target_path):
-                target_path = os.path.join(downloads_dir, f"{base}_{counter}{ext}")
+                target_path = os.path.join(cache_dir, f"{base}_{counter}{ext}")
                 counter += 1
                 
             with open(target_path, "wb") as f:
                 f.write(zip_daten)
-            return target_path
+                
+            uri = _get_shareable_uri(context, target_path, "application/zip")
+            try: os.remove(target_path)
+            except Exception: pass
+            if uri: return uri.toString()
+            return "KIVY_FALLBACK"
         except Exception as e:
             Logger.error(f"PlatformIO: Android Speichern Fehler: {e}")
             return "KIVY_FALLBACK"
@@ -396,26 +408,26 @@ def write_to_custom_dir(data_bytes, relative_folder, filename, target_os, custom
             if not file_doc: return False
             
             import os
+            import shutil
             cache_dir = context.getExternalCacheDir()
             if not cache_dir: cache_dir = context.getCacheDir()
             temp_path = os.path.join(cache_dir.getAbsolutePath(), "temp_write_saf")
             with open(temp_path, "wb") as f:
                 f.write(data_bytes)
                 
-            FileInputStream = autoclass('java.io.FileInputStream')
-            in_stream = FileInputStream(temp_path)
-            out_stream = context.getContentResolver().openOutputStream(file_doc.getUri())
-            
             try:
-                FileUtils = autoclass('android.os.FileUtils')
-                FileUtils.copy(in_stream, out_stream)
-            except Exception:
-                in_stream.transferTo(out_stream)
+                pfd = context.getContentResolver().openFileDescriptor(file_doc.getUri(), "w")
+                if pfd:
+                    fd = pfd.getFd()
+                    fd_dup = os.dup(fd)
+                    with open(temp_path, 'rb') as in_f:
+                        with os.fdopen(fd_dup, 'wb') as out_f:
+                            shutil.copyfileobj(in_f, out_f)
+                    try: pfd.close()
+                    except: pass
+            except Exception as e:
+                Logger.error(f"PlatformIO: Fehler beim Kopieren in den SAF-Stream: {e}")
                 
-            try: in_stream.close()
-            except: pass
-            try: out_stream.close()
-            except: pass
             os.remove(temp_path)
             return file_doc.getUri().toString()
         except Exception as e:
