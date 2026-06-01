@@ -352,8 +352,14 @@ class LoginScreen(Screen):
             app.show_folder_popup_after_main_info = True
             app.do_ersteinrichtung(pwd)
         else:
-            data = decrypt_data(pwd, app.data_path, app.salt_path)
-            if data:
+            salt_path_str = os.path.join(app.user_data_dir, "rechnung_daten.salt")
+            data = decrypt_data(pwd, app.data_path, salt_path_str)
+            if data == "WRONG_PASSWORD":
+                self.ids.pwd_input.text = ""
+                self.ids.error_lbl.text = "Falsches Passwort!"
+                self.ids.error_lbl.color = (1, 0.3, 0.3, 1)
+                return
+            elif data:
                 app.data = data
                 app.master_password = pwd
                 
@@ -482,6 +488,7 @@ class EinstellungenScreen(Screen):
         ("custom_footer", "Eigener Rechnungs-Footer (optional):", "text_multi"),
         ("anonymisieren_nach_jahren", "Kunden mit Umsatz anonymisieren (Jahre, 0 für AUS):", "text"),
         ("interessenten_loeschen_monate", "Interessenten ohne Umsatz löschen (Monate, 0 für AUS):", "text"),
+        ("finanzamt_pruefung_aktiv", "Finanzamtsprüfung aktiv (Pausiert DSGVO-Löschung):", "toggle"),
         ("auto_lock_minuten", "Autom. App-Sperre nach (Minuten, 0 für AUS):", "text"),
         ("qr_aktiv", "QR-Code auf Rechnung:", "toggle"),
         ("logo_aktiv", "Logo auf Rechnung:", "toggle"),
@@ -594,6 +601,7 @@ class EinstellungenScreen(Screen):
                 elif key == "interessenten_loeschen_monate": val = "12"
                 elif key == "auto_lock_minuten": val = "5"
                 elif key == "steuersatz": val = "20"
+                elif key == "finanzamt_pruefung_aktiv": val = "Nein"
 
             if isinstance(ti, Spinner):
                 if not val: ti.text = 'Ja'
@@ -1360,7 +1368,6 @@ class EPU_RechnungsgeneratorApp(App):
             Window.minimum_width, Window.minimum_height = (800, 600)
             
         self.data_path = os.path.join(self.user_data_dir, "rechnung_daten.enc")
-        self.salt_path = os.path.join(self.user_data_dir, "rechnung_daten.salt")
         Window.bind(on_key_down=self.reset_timer)
         Window.bind(on_touch_down=self.reset_timer)
         Window.bind(on_request_close=self.on_request_close)
@@ -1440,11 +1447,12 @@ class EPU_RechnungsgeneratorApp(App):
 
     def do_ersteinrichtung(self, pwd):
         self.data = {"naechste_nummer": 1, "kunden_db": {}, "positionen_db": {}, "meine_daten": {"auto_lock_minuten": "5"}}
-        encrypt_data(self.data, pwd, self.data_path, self.salt_path)
+        encrypt_data(self.data, pwd, self.data_path)
         self.master_password = pwd
         self.root.current = 'main'
 
     def lock_app(self):
+        self.master_password = ""
         self.data = {}
         if self.root.current == 'login':
             # Wechsle kurz den Screen, um ein vollständiges Neuzeichnen zu erzwingen
@@ -1454,12 +1462,20 @@ class EPU_RechnungsgeneratorApp(App):
             self.root.current = 'login'
         
     def cleanup_database(self):
-        if cleanup_database(self.data):
+        android_context = None
+        if self.target_os == 'mobile':
+            try:
+                from jnius import autoclass
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                android_context = PythonActivity.mActivity
+            except Exception:
+                pass
+        if cleanup_database(self.data, android_context=android_context):
             self.daten_speichern()
 
     def daten_speichern(self):
         if self.data and self.master_password:
-            encrypt_data(self.data, self.master_password, self.data_path, self.salt_path)
+            encrypt_data(self.data, self.master_password, self.data_path)
 
     def show_first_visit_info(self, screen_name, title, msg):
         if "visited_screens" not in self.data:
@@ -1601,7 +1617,8 @@ class EPU_RechnungsgeneratorApp(App):
         temp_path = os.path.join(self.user_data_dir, "temp_backup_gen.zip")
         try:
             logo_pfad = self.data.get("meine_daten", {}).get("logo_pfad")
-            create_backup(self.data_path, self.salt_path, temp_path, self.temp_zip_pwd, self.user_data_dir, logo_pfad, app_data=self.data, target_os=self.target_os)
+            salt_path_str = os.path.join(self.user_data_dir, "rechnung_daten.salt")
+            create_backup(self.data_path, salt_path_str, temp_path, self.temp_zip_pwd, self.user_data_dir, logo_pfad, app_data=self.data, target_os=self.target_os)
             with open(temp_path, "rb") as f:
                 self.temp_backup_bytes = f.read()
             os.remove(temp_path)
@@ -1675,7 +1692,8 @@ class EPU_RechnungsgeneratorApp(App):
                     f.write(self.temp_backup_bytes)
             else:
                 logo_pfad = self.data.get("meine_daten", {}).get("logo_pfad")
-                create_backup(self.data_path, self.salt_path, full_path, self.temp_zip_pwd, self.user_data_dir, logo_pfad, app_data=self.data, target_os=self.target_os)
+                salt_path_str = os.path.join(self.user_data_dir, "rechnung_daten.salt")
+                create_backup(self.data_path, salt_path_str, full_path, self.temp_zip_pwd, self.user_data_dir, logo_pfad, app_data=self.data, target_os=self.target_os)
             popup.dismiss()
             self.temp_zip_pwd = None
             self.temp_backup_bytes = None
@@ -1726,8 +1744,9 @@ class EPU_RechnungsgeneratorApp(App):
         if os.path.exists(self.data_path):
             try: os.remove(self.data_path)
             except Exception: pass
-        if os.path.exists(self.salt_path):
-            try: os.remove(self.salt_path)
+        salt_path_str = os.path.join(self.user_data_dir, "rechnung_daten.salt")
+        if os.path.exists(salt_path_str):
+            try: os.remove(salt_path_str)
             except Exception: pass
             
         self.data = {}
